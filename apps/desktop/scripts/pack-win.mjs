@@ -78,7 +78,9 @@ try {
         dependencies: {
           "better-sqlite3": pkg.dependencies["better-sqlite3"],
           "electron-updater": pkg.dependencies["electron-updater"],
-          // Exact pin required by electron-builder / install-app-deps.
+        },
+        // electron-builder rejects these in dependencies; exact pin required.
+        devDependencies: {
           electron: electronVersion,
           "electron-builder": electronBuilderVersion,
         },
