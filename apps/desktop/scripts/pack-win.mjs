@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import {
   cpSync,
@@ -6,6 +7,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -13,6 +15,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const require = createRequire(import.meta.url);
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const stage = mkdtempSync(path.join(tmpdir(), "mt-pack-"));
 const releaseOut = path.join(appDir, "release");
@@ -40,6 +43,11 @@ function collectExes(dir, out = []) {
   return out;
 }
 
+function resolveExactVersion(packageName) {
+  const pkgJson = require.resolve(`${packageName}/package.json`, { paths: [appDir] });
+  return JSON.parse(readFileSync(pkgJson, "utf8")).version;
+}
+
 try {
   if (!existsSync(path.join(appDir, "dist", "main", "index.js"))) {
     throw new Error("Run pnpm build first (missing apps/desktop/dist)");
@@ -48,15 +56,14 @@ try {
     throw new Error(`UI build missing at ${uiDist}`);
   }
 
-  rmSync(releaseOut, { recursive: true, force: true });
+  const electronVersion = resolveExactVersion("electron");
+  const electronBuilderVersion = resolveExactVersion("electron-builder");
+  console.log(`Using electron@${electronVersion}, electron-builder@${electronBuilderVersion}`);
 
+  rmSync(releaseOut, { recursive: true, force: true });
   cpSync(path.join(appDir, "dist"), path.join(stage, "dist"), { recursive: true });
 
   const pkg = JSON.parse(readFileSync(path.join(appDir, "package.json"), "utf8"));
-  const electronRange = pkg.devDependencies?.electron ?? pkg.dependencies?.electron;
-  if (!electronRange) {
-    throw new Error("electron version missing from apps/desktop/package.json");
-  }
   writeFileSync(
     path.join(stage, "package.json"),
     JSON.stringify(
@@ -71,10 +78,9 @@ try {
         dependencies: {
           "better-sqlite3": pkg.dependencies["better-sqlite3"],
           "electron-updater": pkg.dependencies["electron-updater"],
-        },
-        // Needed so install-app-deps rebuilds better-sqlite3 against Electron ABI.
-        devDependencies: {
-          electron: electronRange,
+          // Exact pin required by electron-builder / install-app-deps.
+          electron: electronVersion,
+          "electron-builder": electronBuilderVersion,
         },
       },
       null,
@@ -82,18 +88,21 @@ try {
     ),
   );
 
-  const builderYml = readFileSync(path.join(appDir, "electron-builder.yml"), "utf8").replace(
-    /from:\s*\.\.\/ui\/dist/,
-    `from: ${JSON.stringify(uiDist)}`,
-  );
+  let builderYml = readFileSync(path.join(appDir, "electron-builder.yml"), "utf8");
+  builderYml = builderYml.replace(/from:\s*\.\.\/ui\/dist/, `from: ${JSON.stringify(uiDist)}`);
+  if (!/^electronVersion:/m.test(builderYml)) {
+    builderYml = `electronVersion: ${electronVersion}\n` + builderYml;
+  } else {
+    builderYml = builderYml.replace(/^electronVersion:.*$/m, `electronVersion: ${electronVersion}`);
+  }
   writeFileSync(path.join(stage, "electron-builder.yml"), builderYml);
 
   // Flat npm install — no pnpm workspace symlinks outside the stage dir.
-  run("npm", ["install", "--omit=dev", "--no-fund", "--no-audit"], stage);
-  run("npx", ["--yes", "electron-builder", "install-app-deps"], stage);
+  run("npm", ["install", "--no-fund", "--no-audit"], stage);
+  run("npx", ["electron-builder", "install-app-deps"], stage);
   run(
     "npx",
-    ["--yes", "electron-builder", "--win", "nsis", "--x64", "--config", "electron-builder.yml", "--publish", "never"],
+    ["electron-builder", "--win", "nsis", "--x64", "--config", "electron-builder.yml", "--publish", "never"],
     stage,
   );
 
@@ -109,3 +118,5 @@ try {
 } finally {
   rmSync(stage, { recursive: true, force: true });
 }
+
+void realpathSync;

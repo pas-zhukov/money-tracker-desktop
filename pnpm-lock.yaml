@@ -31,10 +31,10 @@ importers:
         specifier: ^22.10.2
         version: 22.20.5
       electron:
-        specifier: ^33.2.1
+        specifier: 33.4.11
         version: 33.4.11
       electron-builder:
-        specifier: ^25.1.8
+        specifier: 25.1.8
         version: 25.1.8(electron-builder-squirrel-windows@25.1.8)
       esbuild:
         specifier: ^0.25.0
