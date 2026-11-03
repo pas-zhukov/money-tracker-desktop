@@ -1,0 +1,92 @@
+name: Release Windows
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build app
+        run: pnpm build
+
+      - name: Package Windows installer
+        working-directory: apps/desktop
+        run: pnpm exec electron-builder install-app-deps && pnpm exec electron-builder --win nsis --x64 --config electron-builder.yml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Resolve version and notes
+        id: meta
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          TAG="v$VERSION"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          NOTES_FILE=release-notes.md
+          {
+            echo "## Money Tracker $TAG"
+            echo
+            PR_JSON=$(gh pr list --state merged --base master --search "$(git rev-parse HEAD)" --json number,title,body,mergedAt --limit 5 2>/dev/null || true)
+            if [ -n "$PR_JSON" ] && [ "$PR_JSON" != "[]" ]; then
+              echo "$PR_JSON" | node -e '
+                const prs = JSON.parse(require("fs").readFileSync(0,"utf8"));
+                for (const pr of prs) {
+                  console.log(`### #${pr.number} ${pr.title}`);
+                  console.log();
+                  console.log((pr.body || "").trim() || "_Без описания_");
+                  console.log();
+                }
+              '
+            else
+              echo "### Changes"
+              echo
+              PREV=$(git describe --tags --abbrev=0 2>/dev/null || true)
+              if [ -n "$PREV" ]; then
+                git log --pretty=format:"- %s (%h)" "$PREV"..HEAD
+              else
+                git log --pretty=format:"- %s (%h)" -20
+              fi
+              echo
+            fi
+          } > "$NOTES_FILE"
+          echo "notes=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: Money Tracker ${{ steps.meta.outputs.tag }}
+          body_path: release-notes.md
+          files: apps/desktop/release/*.exe
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,20 @@
+{
+  "name": "money-tracker-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Локальный журнал доходов и расходов для Windows",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @money-tracker/desktop dev",
+    "build": "pnpm -r --filter=./packages/* build && pnpm --filter @money-tracker/ui build && pnpm --filter @money-tracker/desktop build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r --filter=./packages/* test",
+    "dist:win": "pnpm build && pnpm --filter @money-tracker/desktop dist:win"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
