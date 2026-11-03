@@ -45,10 +45,9 @@ jobs:
         working-directory: apps/desktop
         shell: pwsh
         run: |
-          pnpm exec electron-builder install-app-deps
-          pnpm exec electron-builder --win nsis --x64 --config electron-builder.yml
-          Get-ChildItem release -ErrorAction SilentlyContinue
-          if (-not (Get-ChildItem release/*.exe -ErrorAction SilentlyContinue)) {
+          node scripts/pack-win.mjs
+          Get-ChildItem release -Recurse -Filter *.exe
+          if (-not (Get-ChildItem release -Recurse -Filter *.exe -ErrorAction SilentlyContinue)) {
             throw "No .exe produced"
           }
         env:

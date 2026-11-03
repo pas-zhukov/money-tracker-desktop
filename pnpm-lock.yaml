@@ -14,12 +14,6 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@money-tracker/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@money-tracker/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       better-sqlite3:
         specifier: ^11.7.0
         version: 11.10.0
@@ -27,6 +21,12 @@ importers:
         specifier: ^6.3.9
         version: 6.8.11
     devDependencies:
+      '@money-tracker/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@money-tracker/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@types/node':
         specifier: ^22.10.2
         version: 22.20.5

@@ -17,7 +17,7 @@ await esbuild.build({
   format: "esm",
   sourcemap: true,
   packages: "bundle",
-  external: ["electron", "better-sqlite3", "argon2"],
+  external: ["electron", "better-sqlite3"],
   banner: {
     js: "import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);",
   },
