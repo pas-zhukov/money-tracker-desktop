@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/bundle-main.mjs",
+    "rebuild:native": "electron-rebuild -f -o better-sqlite3",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dist:win": "pnpm build && node scripts/pack-win.mjs"
   },
@@ -17,6 +18,7 @@
     "electron-updater": "^6.3.9"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.1",
     "@money-tracker/core": "workspace:*",
     "@money-tracker/db": "workspace:*",
     "@types/node": "^22.10.2",

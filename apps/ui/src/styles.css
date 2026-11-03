@@ -1,5 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@600&display=swap");
-
+/* Offline-safe stack (no CDN — app is local-only). */
 :root {
   --bg0: #10151c;
   --bg1: #171e28;
@@ -16,7 +15,7 @@
   --warn: #e6b35c;
   --radius: 12px;
   --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
-  font-family: "IBM Plex Sans", sans-serif;
+  font-family: "Segoe UI", "IBM Plex Sans", "Helvetica Neue", sans-serif;
   color: var(--text);
   background: radial-gradient(1200px 600px at 10% -10%, #243247 0%, transparent 55%),
     radial-gradient(900px 500px at 100% 0%, #1a2e28 0%, transparent 50%), var(--bg0);
@@ -65,7 +64,7 @@ a {
 }
 
 .brand {
-  font-family: "IBM Plex Serif", serif;
+  font-family: Georgia, "IBM Plex Serif", "Times New Roman", serif;
   font-size: 1.35rem;
   letter-spacing: 0.02em;
   padding: 4px 8px 12px;
