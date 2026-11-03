@@ -1,0 +1,15 @@
+node_modules
+dist
+out
+release
+*.log
+.DS_Store
+.env
+.env.*
+coverage
+*.db
+*.db-journal
+*.db.enc
+.session
+.turbo
+*.tsbuildinfo

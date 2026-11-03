@@ -1,0 +1,27 @@
+appId: ru.moneytracker.desktop
+productName: Money Tracker
+directories:
+  output: release
+  buildResources: build
+asar: true
+asarUnpack:
+  - "**/*.node"
+  - "**/better-sqlite3/**"
+  - "**/argon2/**"
+files:
+  - dist/**/*
+  - package.json
+extraResources:
+  - from: ../ui/dist
+    to: ui
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: MoneyTracker-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Money Tracker
+publish: null
