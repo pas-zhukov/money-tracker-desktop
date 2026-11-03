@@ -102,11 +102,11 @@ export interface AppSettingsRecord {
 }
 
 function toBytes(text: string): Uint8Array {
-  return new TextEncoder().encode(text);
+  return Buffer.from(text, "utf8");
 }
 
 function fromBytes(bytes: Uint8Array): string {
-  return new TextDecoder().decode(bytes);
+  return Buffer.from(bytes).toString("utf8");
 }
 
 function normalizeMoney(value: unknown): string {
@@ -141,7 +141,7 @@ export function decodeLegacyBackup(fileBytes: Uint8Array): BackupPayload {
   const body = text.slice(newline + 1).replace(/\s+/g, "");
   if (!body) throw new JournalError("Неверный формат бекапа");
   try {
-    const gzipped = Uint8Array.from(atob(body), (c) => c.charCodeAt(0));
+    const gzipped = new Uint8Array(Buffer.from(body, "base64"));
     const json = gunzipSync(gzipped);
     const raw = JSON.parse(fromBytes(json)) as Record<string, unknown>;
     if (raw.format !== BACKUP_FORMAT || Number(raw.version) !== LEGACY_VERSION) {
@@ -158,9 +158,7 @@ export function decodeLegacyBackup(fileBytes: Uint8Array): BackupPayload {
 export function encodeLegacyBackup(payload: BackupPayload): Uint8Array {
   const json = toBytes(JSON.stringify({ ...payload, format: BACKUP_FORMAT, version: LEGACY_VERSION }));
   const gzipped = gzipSync(json);
-  let binary = "";
-  for (const b of gzipped) binary += String.fromCharCode(b);
-  const body = btoa(binary);
+  const body = Buffer.from(gzipped).toString("base64");
   return toBytes(`${LEGACY_HEADER}\n${body}`);
 }
 
