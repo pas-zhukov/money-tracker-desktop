@@ -1,18 +1,15 @@
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
-import * as argon2 from "argon2";
-
-const scryptAsync = promisify(scryptSync as unknown as (
-  password: string,
-  salt: Buffer,
-  keylen: number,
-  options: { N: number; r: number; p: number },
-) => Buffer);
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  scryptSync,
+  timingSafeEqual,
+} from "node:crypto";
 
 export interface UserRecord {
   id: string;
   username: string;
-  /** argon2id hash for password verification */
+  /** scrypt password verifier: scrypt$N$r$p$saltHex$hashHex */
   passwordHash: string;
   /** salt for DEK derivation (hex) */
   dekSalt: string;
@@ -24,20 +21,32 @@ export interface UsersIndex {
   users: UserRecord[];
 }
 
-const ARGON_OPTS: argon2.Options & { raw?: false } = {
-  type: argon2.argon2id,
-  memoryCost: 19456,
-  timeCost: 2,
-  parallelism: 1,
-};
+const SCRYPT_N = 16384;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const HASH_LEN = 32;
 
 export async function hashPassword(password: string): Promise<string> {
-  return argon2.hash(password, ARGON_OPTS);
+  const salt = randomBytes(16);
+  const hash = scryptSync(password, salt, HASH_LEN, {
+    N: SCRYPT_N,
+    r: SCRYPT_R,
+    p: SCRYPT_P,
+  });
+  return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${salt.toString("hex")}$${hash.toString("hex")}`;
 }
 
-export async function verifyPassword(hash: string, password: string): Promise<boolean> {
+export async function verifyPassword(encoded: string, password: string): Promise<boolean> {
   try {
-    return await argon2.verify(hash, password);
+    const parts = encoded.split("$");
+    if (parts.length !== 6 || parts[0] !== "scrypt") return false;
+    const N = Number(parts[1]);
+    const r = Number(parts[2]);
+    const p = Number(parts[3]);
+    const salt = Buffer.from(parts[4]!, "hex");
+    const expected = Buffer.from(parts[5]!, "hex");
+    const actual = scryptSync(password, salt, expected.length, { N, r, p });
+    return timingSafeEqual(expected, actual);
   } catch {
     return false;
   }
@@ -50,7 +59,7 @@ export function newDekSalt(): string {
 /** Derive 32-byte AES key from password + salt. */
 export function deriveDek(password: string, dekSaltHex: string): Buffer {
   const salt = Buffer.from(dekSaltHex, "hex");
-  return scryptSync(password, salt, 32, { N: 16384, r: 8, p: 1 });
+  return scryptSync(password, salt, 32, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P });
 }
 
 export function encryptDb(plain: Buffer, dek: Buffer): Buffer {
@@ -77,7 +86,7 @@ export function decryptDb(blob: Buffer, dek: Buffer): Buffer {
 /** Encrypt backup payload JSON bytes with password-derived key → MTBAK2 file. */
 export function encryptBackupV2(jsonBytes: Uint8Array, password: string): Buffer {
   const salt = randomBytes(16);
-  const dek = scryptSync(password, salt, 32, { N: 16384, r: 8, p: 1 });
+  const dek = scryptSync(password, salt, 32, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P });
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", dek, iv);
   const encrypted = Buffer.concat([cipher.update(Buffer.from(jsonBytes)), cipher.final()]);
@@ -99,7 +108,7 @@ export function decryptBackupV2(fileBytes: Buffer, password: string): Uint8Array
   const iv = bin.subarray(16, 28);
   const tag = bin.subarray(28, 44);
   const data = bin.subarray(44);
-  const dek = scryptSync(password, salt, 32, { N: 16384, r: 8, p: 1 });
+  const dek = scryptSync(password, salt, 32, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P });
   const decipher = createDecipheriv("aes-256-gcm", dek, iv);
   decipher.setAuthTag(tag);
   try {
@@ -117,5 +126,3 @@ export function constantTimeEqual(a: Buffer, b: Buffer): boolean {
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
 }
-
-void scryptAsync;

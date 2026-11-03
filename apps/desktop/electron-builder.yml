@@ -7,18 +7,17 @@ asar: true
 asarUnpack:
   - "**/*.{node,dll}"
   - "**/better-sqlite3/**"
-  - "**/argon2/**"
 files:
   - dist/**/*
   - package.json
   - node_modules/better-sqlite3/**/*
-  - node_modules/argon2/**/*
   - "!node_modules/**/{CHANGELOG.md,README.md,readme.md,README}"
   - "!node_modules/**/{test,tests,__tests__,docs}/**"
 extraResources:
   - from: ../ui/dist
     to: ui
 npmRebuild: true
+buildDependenciesFromSource: false
 win:
   target:
     - target: nsis

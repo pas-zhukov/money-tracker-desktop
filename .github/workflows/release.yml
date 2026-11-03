@@ -38,17 +38,23 @@ jobs:
       - name: Build app
         run: pnpm build
 
+      # VS env needed for @electron/rebuild of better-sqlite3 if prebuild misses ABI
+      - uses: ilammy/msvc-dev-cmd@v1
+
       - name: Package Windows installer
         working-directory: apps/desktop
-        shell: bash
+        shell: pwsh
         run: |
           pnpm exec electron-builder install-app-deps
           pnpm exec electron-builder --win nsis --x64 --config electron-builder.yml
-          ls -la release || true
-          test -n "$(ls release/*.exe 2>/dev/null)" || { echo "No .exe produced"; exit 1; }
+          Get-ChildItem release -ErrorAction SilentlyContinue
+          if (-not (Get-ChildItem release/*.exe -ErrorAction SilentlyContinue)) {
+            throw "No .exe produced"
+          }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          npm_config_msvs_version: "2022"
 
       - name: Resolve version and notes
         id: meta

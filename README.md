@@ -13,7 +13,7 @@
 
 ## Стек
 
-Electron + React + TypeScript, SQLite (`better-sqlite3`), Argon2id + AES-256-GCM.
+Electron + React + TypeScript, SQLite (`better-sqlite3`), scrypt + AES-256-GCM.
 
 ## Разработка
 
@@ -40,5 +40,5 @@ pnpm dist:win
 
 ## Безопасность
 
-- Пароль не хранится: Argon2id-хэш + ключ шифрования базы из пароля (scrypt)
+- Пароль не хранится: scrypt-хэш + ключ шифрования базы из пароля (scrypt)
 - Файл `user-<id>.db.enc` на диске всегда зашифрован; расшифрованная сессия живёт только пока пользователь вошёл
