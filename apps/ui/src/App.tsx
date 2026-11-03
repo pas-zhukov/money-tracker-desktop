@@ -15,17 +15,29 @@ export function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    api()
-      .users.current()
-      .then((u) => setUser(u as { id: string; username: string } | null))
-      .catch(() => setUser(null));
+    let cancelled = false;
+    (async () => {
+      try {
+        const u = (await api().users.current()) as { id: string; username: string } | null;
+        if (!cancelled) setUser(u);
+      } catch {
+        if (!cancelled) setUser(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    const off = api().onNavigate((path) => navigate(path));
-    return () => {
-      off();
-    };
+    try {
+      const off = api().onNavigate((path) => navigate(path));
+      return () => {
+        off();
+      };
+    } catch {
+      return undefined;
+    }
   }, [navigate]);
 
   if (user === undefined) {
