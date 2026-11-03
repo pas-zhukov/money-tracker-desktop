@@ -13,7 +13,7 @@
 
 ## Стек
 
-Electron + React + TypeScript, SQLite (`better-sqlite3`), Argon2id + AES-256-GCM.
+Electron + React + TypeScript, SQLite (`better-sqlite3`), scrypt + AES-256-GCM.
 
 ## Разработка
 
