@@ -3,6 +3,7 @@ name: Release Windows
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -25,6 +26,12 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Build packages
+        run: pnpm -r --filter=./packages/* build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
       - name: Test
         run: pnpm test
 
@@ -33,7 +40,12 @@ jobs:
 
       - name: Package Windows installer
         working-directory: apps/desktop
-        run: pnpm exec electron-builder install-app-deps && pnpm exec electron-builder --win nsis --x64 --config electron-builder.yml
+        shell: bash
+        run: |
+          pnpm exec electron-builder install-app-deps
+          pnpm exec electron-builder --win nsis --x64 --config electron-builder.yml
+          ls -la release || true
+          test -n "$(ls release/*.exe 2>/dev/null)" || { echo "No .exe produced"; exit 1; }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -43,15 +55,16 @@ jobs:
         shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}.${GITHUB_RUN_NUMBER}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          TAG="v$VERSION"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
           NOTES_FILE=release-notes.md
           {
             echo "## Money Tracker $TAG"
             echo
-            PR_JSON=$(gh pr list --state merged --base master --search "$(git rev-parse HEAD)" --json number,title,body,mergedAt --limit 5 2>/dev/null || true)
+            MERGE_SHA=$(git rev-parse HEAD)
+            PR_JSON=$(gh pr list --state merged --base master --search "$MERGE_SHA" --json number,title,body,mergedAt --limit 5 2>/dev/null || echo "[]")
             if [ -n "$PR_JSON" ] && [ "$PR_JSON" != "[]" ]; then
               echo "$PR_JSON" | node -e '
                 const prs = JSON.parse(require("fs").readFileSync(0,"utf8"));
@@ -74,7 +87,6 @@ jobs:
               echo
             fi
           } > "$NOTES_FILE"
-          echo "notes=$NOTES_FILE" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -85,6 +97,6 @@ jobs:
           name: Money Tracker ${{ steps.meta.outputs.tag }}
           body_path: release-notes.md
           files: apps/desktop/release/*.exe
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
